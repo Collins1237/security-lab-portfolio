@@ -1,0 +1,67 @@
+#!/bin/bash
+# DEN-LAB: Password Attacks | crack weak hashes with John the Ripper — see why weak+unsalted dies instantly
+# Phase 4 of the pentester training track. Offline attack on hashes WE create. Auto-writes a writeup.
+source "$HOME/.local/bin/den-lab-common" || { echo "missing den-lab-common"; exit 1; }
+LAB_TITLE="PASSWORD ATTACKS"; LAB_PHASE="Kill chain · Phase 4 — Password Attacks"
+LAB="$HOME/security-labs/password-cracking"; mkdir -p "$LAB"; cd "$LAB" || exit 1
+WORDLIST=/usr/share/john/password.lst
+md5() { printf '%s' "$1" | md5sum | awk '{print $1}'; }
+command -v john >/dev/null || { echo "  john not installed: sudo pacman -S john"; exit 1; }
+
+wu_begin crack "Password Attacks (Offline Hash Cracking)" "4 — Password Attacks"
+wu_h "Objective"
+wu_p "Demonstrate how an attacker turns stolen password hashes back into plaintext passwords, and show which password choices resist it — the evidence base for a password-policy recommendation."
+wu_h "Tools used"
+wu_li "\`md5sum\` — build sample hashes (simulating a breached database)"; wu_li "John the Ripper — dictionary + rule-based cracking"
+
+# 1
+head "step 1/4 — what a hash is"
+say "Apps never store your password — they store a one-way ${A}hash${R} of it."
+say "Same input always gives the same hash; you can't reverse it back."
+echo; say "md5 of 'password':  ${A}$(md5 password)${R}"
+say "Cracking = hash millions of GUESSES and look for a match. Not reversing."
+pause
+
+# 2
+head "step 2/4 — a stolen password database"
+{ echo "alice:$(md5 password)"; echo "grace:$(md5 password)"; echo "bob:$(md5 123456)"
+  echo "carol:$(md5 qwerty)"; echo "dave:$(md5 letmein)"
+  echo "erin:$(md5 'correct horse battery staple')"; echo "frank:$(md5 'Xq7#mP2$vL9!2kd')"; } > target_md5.txt
+say "This is what an attacker steals — ${A}unsalted MD5${R} (a common weak choice):"
+echo; sed 's/^/    /' target_md5.txt
+wu_h "Methodology"
+wu_p "**Step 1 — Obtain hashes.** Simulated a breached database of unsalted MD5 hashes (\`target_md5.txt\`). Note alice and grace share a hash — identical unsalted hashes reveal password reuse."
+dup=$(awk -F: '{print $2}' target_md5.txt | sort | uniq -d)
+[[ -n $dup ]] && warn "alice & grace have the SAME hash → they reused a password. Unsalted leaks that."
+pause
+
+# 3
+head "step 3/4 — the attack"
+say "Point John at a wordlist. ${D}--rules${R} also tries mangles (Password1, P@ssw0rd)."
+echo
+rm -f "$HOME/.john/john.pot" 2>/dev/null
+wu_p "**Step 2 — Dictionary + rules attack.** Ran John the Ripper against the hashes with a wordlist and mangling rules."
+wu_cmd "Crack the hashes" "john --format=raw-md5 --wordlist=$WORDLIST --rules target_md5.txt 2>&1 | grep -viE 'proceeding|press|warning: detect|openmp|input encoding'"
+echo
+wu_cmd "Show everything cracked" "john --show --format=raw-md5 target_md5.txt 2>/dev/null"
+CRACKED=$(john --show --format=raw-md5 target_md5.txt 2>/dev/null | grep -c ':')
+pause
+
+# 4
+head "step 4/4 — findings, remediation, lessons"
+wu_h "Findings"
+wu_p "- **$CRACKED of 7** passwords cracked, most in under a second (~5M guesses/sec on a laptop CPU; a GPU does billions)."
+wu_p "- The long passphrase and the random 15-char password survived — length beat 'complexity'."
+wu_p "- Password reuse (alice/grace) was visible directly from the unsalted hashes."
+wu_h "Remediation / recommendations"
+wu_li "Store passwords with a slow, salted algorithm (bcrypt / argon2), never MD5/SHA-1."
+wu_li "Enforce length over complexity — passphrases of 15+ characters."
+wu_li "Ban reuse and common passwords; deploy a password manager + MFA."
+wu_h "What I learned (Security+ / pentest concepts)"
+wu_li "Hashing vs. encryption; salting and why it defeats reuse detection + rainbow tables."
+wu_li "Work factor / slow hashes make offline cracking impractical."
+wu_li "Dictionary → rules → brute/mask attack progression; why length wins."
+wu_end
+
+say "Phase 4 complete. The files live in ${D}$LAB${R}"
+echo; printf '%s' "  ${D}any key to close …${R}"; read -rsn1; echo

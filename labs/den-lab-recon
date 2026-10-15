@@ -1,0 +1,79 @@
+#!/bin/bash
+# DEN-LAB: Recon & Host Discovery | map a network like an engagement starts — find live hosts & the attack surface
+# Phase 1 of the pentester training track. Runs against YOUR OWN LAN. Auto-writes a writeup.
+source "$HOME/.local/bin/den-lab-common" || { echo "missing den-lab-common"; exit 1; }
+LAB_TITLE="RECON & HOST DISCOVERY"; LAB_PHASE="Kill chain · Phase 1 — Reconnaissance"
+NET=192.168.4.0/22; SRV=192.168.4.22
+
+command -v nmap >/dev/null || { echo "  nmap not installed: sudo pacman -S nmap"; exit 1; }
+wu_begin recon "Reconnaissance & Host Discovery" "1 — Reconnaissance"
+wu_h "Objective"
+wu_p "Enumerate live hosts on the target network and map the attack surface (which machines exist, what they are, and which one is worth attacking next), as the opening phase of a penetration test."
+wu_h "Tools used"
+wu_li "\`ip\` — read our own network position"; wu_li "\`nmap -sn\` — host discovery (ping/ARP sweep, no port scan)"; wu_li "\`nmap -sV\` — service/version detection on the chosen target"
+
+# ── 1 ──────────────────────────────────────────────────────────
+head "step 1/5 — what recon is, and why it's first"
+say "Recon = gathering information before you touch anything offensive."
+say "You can't attack what you can't see. Real engagements ALWAYS start here —"
+say "you build a map of what exists, then decide where to push."
+echo
+note "Passive recon = no packets to the target (Google, DNS records, leaks)."
+note "Active recon = you send packets (ping sweeps, port scans). We do active"
+say  "  recon here — and it's legal because this is YOUR network."
+pause
+
+# ── 2 ──────────────────────────────────────────────────────────
+head "step 2/5 — know thyself (your position on the network)"
+say "First, where are WE? Our IP, our subnet, and the gateway (router)."
+echo
+wu_h "Methodology"
+wu_p "**Step 1 — Establish our position.** Identify our own interface, address and default gateway so we know the network we're on."
+wu_cmd "Our own IP addresses (ignore loopback)" "ip -brief addr | grep -v LOOPBACK"
+wu_cmd "The default gateway — our router" "ip route | awk '/default/{print \$3; exit}'"
+echo
+say "That gateway is the router. Our subnet is ${A}$NET${R} — the range we'll sweep."
+pause
+
+# ── 3 ──────────────────────────────────────────────────────────
+head "step 3/5 — host discovery (who's alive?)"
+say "A ${A}ping sweep${R} asks every address 'are you there?' without port-scanning."
+say "${D}-sn${R} = 'no port scan, just discovery'. Fast and quiet. Scanning now…"
+echo
+wu_p "**Step 2 — Host discovery.** A ping sweep (\`nmap -sn\`) finds live hosts across the subnet without the noise of a full port scan."
+wu_cmd "Ping-sweep the whole LAN" "nmap -sn $NET"
+LIVE=$(grep -c 'Nmap scan report' <<<"$LAST_OUT")
+echo
+good "$LIVE live hosts found on your network."
+pause
+
+# ── 4 ──────────────────────────────────────────────────────────
+head "step 4/5 — fingerprint the target"
+say "Discovery told us WHAT is alive. Now we pick one host and ask WHAT it runs."
+say "Our target: the homelab server (${A}$SRV${R}) — we own it. ${D}-sV${R} = detect"
+say "service + version on each open port (that's the attack surface)."
+echo
+wu_p "**Step 3 — Service enumeration on the chosen target.** Fingerprint the homelab server ($SRV) with version detection to reveal its exposed services (its attack surface)."
+wu_cmd "Service + version scan of the target" "nmap -sV --version-light $SRV"
+OPEN=$(grep -c '^[0-9].*open' <<<"$LAST_OUT")
+pause
+
+# ── 5 ──────────────────────────────────────────────────────────
+head "step 5/5 — findings, remediation, lessons"
+wu_h "Findings"
+wu_p "- **$LIVE** live hosts discovered on \`$NET\`."
+wu_p "- Target \`$SRV\` exposes **$OPEN** services (see version scan above). Each open port is a potential entry point and should be justified, patched, and firewalled."
+wu_p "- Mixed environment: servers alongside many IoT devices (see the home network inventory). IoT devices are a common weak link and belong on an isolated segment."
+wu_h "Remediation / recommendations"
+wu_li "Close or firewall any service that doesn't need to be exposed (reduce attack surface)."
+wu_li "Keep exposed services patched and version-current."
+wu_li "Segment IoT onto a separate VLAN / guest network so a compromised gadget can't reach servers."
+wu_li "Monitor for unexpected new hosts or open ports (that's what your Pi-hole/uptime monitoring helps with)."
+wu_h "What I learned (Security+ / pentest concepts)"
+wu_li "Passive vs. active reconnaissance, and why scope/authorization is what makes active recon legal."
+wu_li "Host discovery (ping sweep) vs. service enumeration (version scan) — two distinct phases."
+wu_li "Attack surface = the set of reachable services; shrinking it is core defensive hardening."
+wu_end
+
+say "Phase 1 complete. ${A}Next in the track: Scanning & Service Enumeration${R} (go deeper)."
+echo; printf '%s' "  ${D}any key to close …${R}"; read -rsn1; echo

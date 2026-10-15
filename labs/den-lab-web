@@ -1,0 +1,125 @@
+#!/bin/bash
+# DEN-LAB: Web App Security | exploit AND fix OWASP Top 10 flaws in a safe target you deploy yourself
+# Phase 5 of the pentester training track. Target = OWASP Juice Shop in Docker, on YOUR OWN machine.
+# Auto-writes a portfolio writeup. Docker runs via pkexec (you're not in the docker group — that's safer).
+source "$HOME/.local/bin/den-lab-common" || { echo "missing den-lab-common"; exit 1; }
+LAB_TITLE="WEB APPLICATION SECURITY"; LAB_PHASE="Kill chain · Phase 5 — Web Application Attacks"
+
+IMG=bkimminich/juice-shop
+CTR=juice-shop
+URL=http://127.0.0.1:3000
+# Docker on this PC needs root (you're not in the docker group, by design — docker group = root-equivalent).
+dock() { pkexec docker "$@"; }
+
+command -v docker >/dev/null || { echo "  docker not installed: sudo pacman -S docker && sudo systemctl enable --now docker"; exit 1; }
+
+# ── bring the service up ──────────────────────────────────────
+ensure_target() {
+  head "setup — deploy the practice target"
+  say "Our target is ${A}OWASP Juice Shop${R} — a web shop built ON PURPOSE to be"
+  say "insecure, so people can learn safely. It runs on ${A}localhost${R}, on a machine"
+  say "${A}you own${R}. That's what makes this legal: authorized target, no one else touched."
+  echo
+  say "Starting Docker and the target (you may be asked for your password — that's"
+  say "pkexec giving Docker the root access it needs)…"
+  echo
+  pkexec systemctl start docker >/dev/null 2>&1
+  if dock ps --format '{{.Names}}' 2>/dev/null | grep -qx "$CTR"; then
+    good "Target already running."
+  else
+    dock rm -f "$CTR" >/dev/null 2>&1
+    dock run -d --rm --name "$CTR" -p 127.0.0.1:3000:3000 "$IMG" >/dev/null 2>&1 \
+      || { warn "Could not start the target. Is the image pulled? ($IMG)"; return 1; }
+    printf '  %swaiting for the app to boot' "$D"
+    for i in $(seq 1 45); do curl -sf -m 2 "$URL/" >/dev/null 2>&1 && break; printf '.'; sleep 2; done
+    printf '%s\n' "$R"
+  fi
+  curl -sf -m 3 "$URL/" >/dev/null 2>&1 && good "Target is up at ${A}$URL${R}" || { warn "Target not responding yet."; return 1; }
+}
+
+wu_begin web "Web Application Security Assessment" "5 — Web Application Attacks"
+wu_h "Objective"
+wu_p "Assess a web application for the most common classes of vulnerability (the OWASP Top 10), demonstrate the risk of each, and — the half that actually gets paid for — document how to remediate them. Target: a locally-deployed, deliberately-vulnerable application (OWASP Juice Shop) running on a host I own."
+wu_h "Tools & target"
+wu_li "\`docker\` — deploy the vulnerable target in an isolated container"
+wu_li "OWASP Juice Shop — intentionally-vulnerable web app (safe, legal practice target)"
+wu_li "A web browser + its built-in developer tools — the core web-testing toolkit"
+
+ensure_target || { echo; printf '%s' "  ${D}any key to close …${R}"; read -rsn1; exit 1; }
+pause
+
+# ── 1 ── the categories, each paired with its fix ─────────────
+head "step 1/4 — the two flaws everyone learns first"
+say "Web vulns come from the app ${A}trusting input it shouldn't${R}. Two classics:"
+echo
+note "${A}Injection (e.g. SQL injection)${R}"
+say  "  The app pastes your input straight into a database query, so crafted"
+say  "  input changes what the query DOES instead of being treated as data."
+say  "  ${G}FIX:${R} parameterized queries / prepared statements — the database is"
+say  "  told 'this is data, never code'. Never build queries by string-concatenation."
+echo
+note "${A}Cross-Site Scripting (XSS)${R}"
+say  "  The app reflects your input back into the page without neutralizing it,"
+say  "  so script you supplied runs in another user's browser."
+say  "  ${G}FIX:${R} context-aware output encoding + a Content-Security-Policy;"
+say  "  treat all user input as untrusted on the way OUT, not just on the way in."
+wu_h "Findings — Injection & XSS"
+wu_p "**Injection (A03).** User-supplied input is incorporated into interpreter commands (e.g. SQL) without separation of code and data, allowing the input to alter query logic. **Remediation:** use parameterized queries / prepared statements and least-privilege database accounts; never concatenate untrusted input into a query."
+wu_p "**Cross-Site Scripting (part of A03).** Untrusted input is rendered back into pages without context-aware encoding, letting attacker-controlled script execute in victims' browsers. **Remediation:** context-aware output encoding, a restrictive Content-Security-Policy, and framework auto-escaping; validate input but rely on output encoding for the fix."
+pause
+
+# ── 2 ── access control + misconfig ───────────────────────────
+head "step 2/4 — the flaws that top the OWASP list today"
+say "${A}Broken Access Control${R} is #1 on the OWASP Top 10. The app checks who you"
+say "are at login, then forgets to check ${A}what you're allowed to touch${R} — so"
+say "changing an id in a URL or request lets you reach another user's data or"
+say "an admin-only page. ${G}FIX:${R} enforce authorization on the ${A}server${R} for every"
+say "request, deny by default, and never rely on the UI hiding a button."
+echo
+say "${A}Security Misconfiguration & Data Exposure${R}: leftover debug interfaces,"
+say "default accounts, verbose errors that leak internals, confidential files"
+say "left in a public folder. ${G}FIX:${R} harden defaults, remove what you don't use,"
+say "return generic errors, and keep secrets/documents out of web-served paths."
+wu_h "Findings — Access Control & Misconfiguration"
+wu_p "**Broken Access Control (A01).** Authorization is not consistently enforced server-side; manipulating identifiers or calling endpoints directly can expose other users' data or privileged functions. **Remediation:** enforce access checks on the server for every request, deny by default, and test for horizontal/vertical privilege escalation."
+wu_p "**Security Misconfiguration (A05) & Sensitive Data Exposure.** Leftover interfaces, default credentials, verbose error messages, and confidential files in web-accessible paths widen the attack surface. **Remediation:** remove unused features/accounts, return generic error pages, store secrets and documents outside web roots, and review configuration as part of deployment."
+pause
+
+# ── 3 ── prove it, safely, in the app ─────────────────────────
+head "step 3/4 — see it for yourself (your own target)"
+say "The Juice Shop keeps a ${A}Score Board${R}: a live checklist of challenges that"
+say "lights up green as you pull off each attack. That board is your ${A}evidence${R}."
+echo
+say "Opening the app in your browser now. Two gentle first moves to try:"
+echo
+note "Find the hidden Score Board — it isn't linked in the menu (recon in miniature)."
+note "In a login field, try the textbook probe  ${A}' OR 1=1--${R}  and watch how the"
+say  "  app reacts. Each solved challenge pops a 'challenge solved' toast and turns"
+say  "  its tile green on the board."
+echo
+BROWSER=$(command -v omarchy-launch-browser || command -v xdg-open || command -v chromium)
+if [[ -n $BROWSER ]]; then setsid "$BROWSER" "$URL/#/score-board" >/dev/null 2>&1 & good "Score Board opened in your browser."; else say "Open ${A}$URL/#/score-board${R} in your browser."; fi
+wu_h "Methodology"
+wu_p "The application was deployed locally in Docker and assessed through the browser and its developer tools. Testing focused on the OWASP Top 10 categories above; the application's built-in Score Board was used to confirm which vulnerability classes were successfully demonstrated. All testing was confined to the locally-owned instance."
+pause
+
+# ── 4 ── wrap-up ──────────────────────────────────────────────
+head "step 4/4 — remediation summary & lessons"
+say "The exploit is the demo; the ${A}remediation${R} is the deliverable. A real report"
+say "pairs every finding with a concrete fix — that's what a client pays for."
+wu_h "Remediation summary"
+wu_li "Separate code from data everywhere: parameterized queries, output encoding, a Content-Security-Policy."
+wu_li "Enforce authorization server-side on every request; deny by default."
+wu_li "Harden configuration: no defaults, no debug interfaces, generic errors, secrets out of web roots."
+wu_li "Keep dependencies patched and validate all input — but fix injection/XSS at the OUTPUT boundary."
+wu_h "What I learned (Security+ / pentest concepts)"
+wu_li "The OWASP Top 10 as a shared vocabulary for web risk, led today by Broken Access Control and Injection."
+wu_li "Injection and XSS both stem from mixing untrusted input with code; the fix is separation, not blocklists."
+wu_li "A finding is only useful with a remediation — report-writing is the core deliverable of a penetration test."
+wu_li "Running the target in Docker on a host I own keeps the whole exercise authorized and isolated."
+wu_end
+
+echo
+say "Target is still running at ${A}$URL${R} so you can keep going on the Score Board."
+say "Stop it anytime with:  ${A}pkexec docker stop $CTR${R}"
+echo; printf '%s' "  ${D}any key to close …${R}"; read -rsn1; echo
