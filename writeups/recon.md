@@ -31,7 +31,7 @@ _Our own IP addresses (ignore loopback)_
 ```console
 $ ip -brief addr | grep -v LOOPBACK
 lo               UNKNOWN        127.0.0.1/8 ::1/128 
-eno1             UP             192.168.5.131/22 fdcc:584:e235:1:fd3b:2f84:4ddf:482a/64 [global IPv6 redacted] fe80::9fad:40d2:2af6:8354/64 
+eno1             UP             192.168.5.131/22 fdcc:584:e235:1:fd3b:2f84:4ddf:482a/64 [global IPv6 redacted]/64 fe80::9fad:40d2:2af6:8354/64 
 ```
 
 _The default gateway — our router_
@@ -134,7 +134,7 @@ SF:ogs\x20for\x20more\x20details\.\"}")%r(X11Probe,2F,"HTTP/1\.1\x20400\x2
 SF:0Bad\x20Request\r\nConnection:\x20close\r\n\r\n")%r(FourOhFourRequest,C
 SF:9,"HTTP/1\.1\x20400\x20Bad\x20Request\r\ncontent-type:\x20application/j
 SF:son\r\nVary:\x20Accept-Encoding\r\nDate:\x20Mon,\x2012\x20Oct\x202026\x
-SF:2023:06:41\x20GMT\r\nConnection:\x20close\r\n\r\n{\"error\":\"Host\x20v
+SF:[global IPv6 redacted]\x20GMT\r\nConnection:\x20close\r\n\r\n{\"error\":\"Host\x20v
 SF:alidation\x20failed\.\x20See\x20logs\x20for\x20more\x20details\.\"}")%r
 SF:(SSLSessionReq,2F,"HTTP/1\.1\x20400\x20Bad\x20Request\r\nConnection:\x2
 SF:0close\r\n\r\n")%r(TLSSessionReq,2F,"HTTP/1\.1\x20400\x20Bad\x20Request

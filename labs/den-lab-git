@@ -1,0 +1,149 @@
+#!/bin/bash
+# DEN-LAB: Git Basics | learn version control hands-on — make real commits in a safe throwaway folder
+# Foundations lab. Everything happens in a sandbox folder; nothing touches your portfolio or GitHub.
+# Auto-writes a short skills writeup. Teaches the real commands behind your one-word "push".
+source "$HOME/.local/bin/den-lab-common" || { echo "missing den-lab-common"; exit 1; }
+LAB_TITLE="GIT BASICS"; LAB_PHASE="Foundations · Version Control"
+
+command -v git >/dev/null || { echo "  git not installed: sudo pacman -S git"; exit 1; }
+
+SANDBOX="$HOME/security-labs/git-sandbox"
+WU="$WU_DIR/git.md"
+
+# fresh sandbox every run (safe: it's a throwaway practice folder)
+rm -rf "$SANDBOX"; mkdir -p "$SANDBOX"; cd "$SANDBOX" || exit 1
+
+# ── tiny run-and-log helper (echoes the command, runs it, logs to the writeup) ──
+gc() {   # gc "<plain-english why>" "<git/shell command>"
+  local why=$1 cmd=$2 out
+  echo "  ${D}\$ ${cmd}${R}"
+  out=$(bash -c "$cmd" 2>&1)
+  [[ -n $out ]] && echo "$out" | sed "s/^/    ${D}/; s/\$/${R}/"
+  { echo "**$why**"; echo; echo '```console'; echo "\$ ${cmd}"; echo "$out"; echo '```'; echo; } >> "$WU"
+  LAST=$out
+}
+
+# ── start the writeup (skills note, not a pentest report) ──
+{
+  echo "# Version Control with Git — Skills Lab"
+  echo
+  echo "**Topic:** Git fundamentals (local version control)  "
+  echo "**Date:** $(date '+%Y-%m-%d')  "
+  echo "**Author:** $AUTHOR  "
+  echo "**Environment:** throwaway sandbox folder on my own machine"
+  echo
+  echo "> Why this matters for a security/IT career: every team tracks its code,"
+  echo "> scripts, and configs in git. Version control is a baseline professional"
+  echo "> skill — this lab shows I can create a repository, record changes, and"
+  echo "> read a project's history."
+  echo
+  echo "## What I practiced"
+  echo
+} > "$WU"
+
+# ── 1 ──────────────────────────────────────────────────────────
+head "step 1/7 — what git actually is"
+say "Git is a ${A}save-history machine for a folder of files${R} — like 'track"
+say "changes' in a document, but for a whole project. Each saved version is"
+say "called a ${A}commit${R} (a snapshot). You can look back at any past snapshot,"
+say "so you never truly lose work."
+echo
+note "${A}Local${R} = the copy on THIS computer (what we practice today)."
+note "${A}Remote${R} = a copy online, like GitHub (your portfolio lives there)."
+note "The loop is just:  ${A}commit${R} = save · ${A}push${R} = upload · ${A}pull${R} = download."
+echo
+say "We're working in a throwaway folder so you can't break anything:"
+say "  ${D}$SANDBOX${R}"
+pause
+
+# ── 2 ──────────────────────────────────────────────────────────
+head "step 2/7 — create a repository"
+say "${A}git init${R} turns a plain folder into a git repository — it creates a"
+say "hidden ${A}.git${R} folder where all the history is stored. That's the moment"
+say "a folder starts being tracked."
+echo
+gc "Turn this folder into a git repository." "git init -b main"
+gc "Proof: the hidden .git history folder now exists." "ls -a | tr '\n' ' '; echo"
+pause
+
+# ── 3 ──────────────────────────────────────────────────────────
+head "step 3/7 — tell git who you are"
+say "Git stamps every commit with a name + email (so history shows WHO changed"
+say "what). We set it ${A}just for this folder${R} (--local), leaving your system"
+say "settings untouched. (Must be done AFTER git init — --local needs a repo.)"
+echo
+gc "Set an identity for this practice repo only (not system-wide)." \
+   "git config --local user.name 'Allan Collins'; git config --local user.email 'denlan711@users.noreply.github.com'; echo 'identity set for this folder'"
+pause
+
+# ── 4 ──────────────────────────────────────────────────────────
+head "step 4/7 — make a file, then check status"
+say "Let's create a file, then ask git what it sees. ${A}git status${R} is the"
+say "command you'll run most — it answers 'what have I changed?'."
+echo
+gc "Create a first file in the project." \
+   "printf 'My Security+ study log\n- Day 1: set up a git repo\n' > study-log.md; echo 'created study-log.md'"
+gc "Ask git what it notices — the file is 'untracked' (git sees it, isn't saving it yet)." \
+   "git status --short; echo '(?? = git sees it but is not tracking it yet)'"
+pause
+
+# ── 5 ──────────────────────────────────────────────────────────
+head "step 5/7 — stage, then commit (your first snapshot)"
+say "Saving is TWO steps on purpose: ${A}add${R} picks WHICH changes to include"
+say "(staging), then ${A}commit${R} records them with a note. This lets you save"
+say "related changes together with a clear message."
+echo
+gc "Stage the file (mark it to be included in the next snapshot)." "git add study-log.md"
+gc "Now it's 'staged' — ready to be saved (A = added/staged)." "git status --short"
+gc "Commit: save the snapshot with a message describing what you did." \
+   "git commit -m 'Start my Security+ study log'"
+echo
+good "You just made your first commit — a permanent snapshot in the history."
+pause
+
+# ── 6 ──────────────────────────────────────────────────────────
+head "step 6/7 — change something, see the diff, commit again"
+say "Real work = many small commits. Let's change the file and use ${A}git diff${R}"
+say "to see EXACTLY what changed before saving — a habit that prevents mistakes."
+echo
+gc "Add a new line to the file." "printf -- '- Day 2: learned add, commit, diff, log\n' >> study-log.md; echo 'updated the file'"
+gc "git diff shows exactly what changed ( + = added line )." "git diff"
+gc "Stage and commit the change in one view." "git add study-log.md && git commit -m 'Log day 2 progress'"
+pause
+
+# ── 7 ──────────────────────────────────────────────────────────
+head "step 7/7 — read the history, and how this maps to GitHub"
+say "${A}git log${R} is your project's timeline — every snapshot, newest first."
+echo
+gc "The full history of this repo (two commits)." "git log --oneline"
+echo
+say "To put a repo ONLINE you'd add a remote and ${A}push${R}:"
+say "  ${D}git remote add origin <github-url>${R}   ${D}# link to a GitHub repo${R}"
+say "  ${D}git push -u origin main${R}              ${D}# upload your commits${R}"
+echo
+note "In YOUR Den, you never type that — the Git Portfolio screen runs"
+say  "  ${A}commit${R} + ${A}push${R} for you when you type your push word ${A}collinsgit${R}."
+say  "  Now you know the real commands happening behind that one word."
+
+{
+  echo "## Commands I can now use"
+  echo
+  echo "| Command | What it does |"
+  echo "|---|---|"
+  echo "| \`git init\` | turn a folder into a repository |"
+  echo "| \`git status\` | see what has changed |"
+  echo "| \`git add <file>\` | stage changes for the next commit |"
+  echo "| \`git commit -m \"...\"\` | save a snapshot with a message |"
+  echo "| \`git diff\` | see exactly what changed |"
+  echo "| \`git log --oneline\` | read the project history |"
+  echo "| \`git push\` / \`git pull\` | upload to / download from a remote (GitHub) |"
+  echo
+  echo "---"
+  echo "_Practiced hands-on in a sandbox repository._"
+} >> "$WU"
+
+"$HOME/.local/bin/den-writeups" --reindex >/dev/null 2>&1 || true
+echo
+good "Skills writeup saved → $WU"
+say "The practice folder stays at ${D}$SANDBOX${R} — poke around, or rerun this lab to reset it."
+echo; printf '%s' "  ${D}any key to close …${R}"; read -rsn1; echo
