@@ -23,6 +23,17 @@ authorization, methodology, findings, and remediation.
 | 2 | [Password Attacks (Offline Hash Cracking)](writeups/crack.md) | 4 — Password Attacks |
 | 3 | [Web Application Security Assessment](writeups/web.md) | 5 — Web App Attacks |
 
+### Defensive groundwork (my homelab server)
+
+Knowing what a hardened host looks like is how you spot a soft one.
+
+| Writeup | Focus |
+|---------|-------|
+| [Linux Server Hardening](writeups/hardening.md) | UFW, kernel/sysctl hardening, auto-patching, Lynis — plus a Docker-bypasses-firewall **finding** |
+| [SSH Key-Only Authentication](writeups/ssh.md) | Staged lockdown, the `sshd_config.d` first-value gotcha, verified from outside |
+| [Reverse Proxy + HTTPS (private CA)](writeups/proxy.md) | Caddy, `.lan` TLS via my own certificate authority, trust chains |
+| [Version Control with Git](writeups/git.md) | Git fundamentals lab |
+
 ## Labs (the automation behind the writeups)
 
 The [`labs/`](labs/) directory holds the exercises themselves — theme-aware,
@@ -34,6 +45,7 @@ real tools (`nmap`, John the Ripper, Docker), and writes its own report.
 | [`den-lab-recon`](labs/den-lab-recon) | Reconnaissance | my own LAN |
 | [`den-lab-crack`](labs/den-lab-crack) | Password attacks | offline hashes (generated) |
 | [`den-lab-web`](labs/den-lab-web) | Web app attacks | OWASP Juice Shop (Docker, localhost) |
+| [`den-lab-git`](labs/den-lab-git) | Skills lab | git sandbox |
 | [`den-lab-common`](labs/den-lab-common) | — | shared library + writeup engine |
 
 The shared `den-lab-common` library provides the UI helpers and the writeup
@@ -46,6 +58,8 @@ the deliverable, exactly like a real engagement).
 - **Recon & enumeration** — host discovery and service/version fingerprinting with `nmap`.
 - **Password security** — offline hash cracking, and *why* salting + slow hashes defeat it.
 - **Web app security** — the OWASP Top 10, each flaw paired with its remediation.
+- **Linux hardening** — firewalling, kernel network hardening, patch automation, auditing with Lynis.
+- **Authentication & PKI** — key-only SSH, running a private CA, TLS trust chains.
 - **Automation** — reusable Bash tooling with a shared library and a reporting engine.
 - **Reporting** — clear writeups with scope, methodology, findings, and fixes.
 
