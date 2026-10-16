@@ -32,6 +32,11 @@ Knowing what a hardened host looks like is how you spot a soft one.
 | [Linux Server Hardening](writeups/hardening.md) | UFW, kernel/sysctl hardening, auto-patching, Lynis — plus a Docker-bypasses-firewall **finding** |
 | [SSH Key-Only Authentication](writeups/ssh.md) | Staged lockdown, the `sshd_config.d` first-value gotcha, verified from outside |
 | [Reverse Proxy + HTTPS (private CA)](writeups/proxy.md) | Caddy, `.lan` TLS via my own certificate authority, trust chains |
+
+### Skills
+
+| Writeup | Focus |
+|---------|-------|
 | [Version Control with Git](writeups/git.md) | Git fundamentals lab |
 
 ## Labs (the automation behind the writeups)
