@@ -133,13 +133,17 @@ debug1: Remote protocol version 2.0, remote software version Mocana SSH 5.3.1
 debug1: Authentications that can continue: password
 ```
 
+**The allowlist blocks everyone else.** As a negative test, I tried SSH to the
+switch from my phone, which has a different IP on the same LAN. The switch **refused the
+connection**. Only the authorized workstation can reach the management plane.
+
 | # | Finding | Before | After |
 |---|---|---|---|
 | 1 | Manager password | none | ✅ set |
 | 2 | SNMP `public` read-write | answered | ✅ no response |
 | 3 | Telnet (23) | open | ✅ closed |
 | 4 | HTTP (80) | open | ✅ closed |
-| 5 | Old firmware / weak SSH | exposed to whole LAN | ⚠️ mitigated: management restricted to one host |
+| 5 | Old firmware / weak SSH | exposed to whole LAN | ⚠️ mitigated: management restricted to one host (other devices verified refused) |
 
 ## The firmware problem — a compensating control
 
@@ -168,6 +172,5 @@ the to-do list until I can get the image from HPE.
 ## Next steps
 
 - Upgrade firmware to YA.16.11 from an official HPE source, then re-run `ssh2-enum-algos` to confirm modern crypto.
-- Confirm the allowlist from a second device. SSH from a non-authorized IP should be refused.
 - Set the clock via SNTP so logs have real timestamps.
 - Use VLANs to segment the lab from the home network.
