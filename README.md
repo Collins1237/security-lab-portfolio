@@ -33,6 +33,7 @@ Knowing what a hardened host looks like is how you spot a soft one.
 | [SSH Key-Only Authentication](writeups/ssh.md) | Staged lockdown, the `sshd_config.d` first-value gotcha, verified from outside |
 | [Reverse Proxy + HTTPS (private CA)](writeups/proxy.md) | Caddy, `.lan` TLS via my own certificate authority, trust chains |
 | [WireGuard VPN + Segmentation](writeups/vpn.md) | Split tunnel, server-enforced segmentation (verified), clean decommission + a diagnosed failure |
+| [Home Network Security Assessment](writeups/home-audit.md) | Client-style assessment of my own LAN: rules of engagement, nmap + Pi-hole DNS-log evidence, 5 rated findings, remediation tracker |
 | [Network Switch Hardening](writeups/switch.md) | Audited a factory-default HP/Aruba switch, fixed 4 findings, re-tested each; compensating control when the firmware patch was unavailable |
 
 ### Skills
@@ -67,6 +68,7 @@ the deliverable, exactly like a real engagement).
 - **Web app security** — the OWASP Top 10, each flaw paired with its remediation.
 - **Linux hardening** — firewalling, kernel network hardening, patch automation, auditing with Lynis.
 - **Authentication & PKI** — key-only SSH, running a private CA, TLS trust chains.
+- **Vulnerability assessment & reporting** — scoping with rules of engagement, evidence-backed findings rated by severity, choosing the right data source (DNS logs vs. packet capture on a switched network).
 - **Network device hardening** — auditing a managed switch (SNMP, Telnet, HTTP, SSH crypto), remediation over console, compensating controls.
 - **Secure remote access** — WireGuard VPN, split tunneling, network segmentation enforced at the chokepoint.
 - **Automation** — reusable Bash tooling with a shared library and a reporting engine.
